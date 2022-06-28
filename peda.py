@@ -890,17 +890,32 @@ class PEDA(object):
         if not filename:
             return None
         vmap = self.get_vmmap(filename)
-        elfbase = vmap[0][0] if vmap else 0
+        offset = 0
+        if vmap:
+            for (start, end, perm, name) in vmap:
+                if "r" in perm and "x" in perm:
+                    offset = start
+                    break
+
+        elfbase = execute_external_command("%s -h '%s'| grep -B1 CODE | head -1 | awk '{print \"0x\"$5}'" %
+            (config.OBJDUMP, filename))
+
+        if to_int(elfbase) is not None:
+            offset -= to_int(elfbase)
 
         if to_int(search) is not None:
-            search = "%x" % to_int(search)
+            search = to_int(search)
+            fsearch = "%016x" % (search - offset)
+            search = "%x" % search
+        else:
+            fsearch = search
 
         search_data = 1
         if search == "":
             search_data = 0
 
         out = execute_external_command("%s -M %s -z --prefix-address -d '%s' | grep '%s'" %
-            (config.OBJDUMP, gdb.parameter('disassembly-flavor'), filename, search))
+            (config.OBJDUMP, gdb.parameter('disassembly-flavor'), filename, fsearch))
 
         for line in out.splitlines():
             if not line: continue
@@ -908,8 +923,7 @@ class PEDA(object):
             if not addr: continue
 
             # update with runtime values
-            if addr < elfbase:
-                addr += elfbase
+            addr += offset
             out = self.execute_redirect("x/i 0x%x" % addr)
             if out:
                 line = out
@@ -923,7 +937,7 @@ class PEDA(object):
                 if "call" in opcode and search in opers:
                     result += [(addr, line.strip())]
                 if search_data:
-                     if "mov" in opcode and search in opers:
+                     if ("mov" in opcode or "lea" in opcode) and search in opers:
                          result += [(addr, line.strip())]
 
         return result
