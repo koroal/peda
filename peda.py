@@ -40,7 +40,7 @@ from skeleton import *
 from shellcode import *
 from utils import *
 import config
-from nasm import *
+from asm import *
 
 if sys.version_info.major == 3:
     from urllib.request import urlopen
@@ -733,7 +733,7 @@ class PEDA(object):
         """
         if bits is None:
             (arch, bits) = self.getarch()
-        return Nasm.assemble(asmcode, bits)
+        return Asm.assemble(asmcode, bits)
 
     def disassemble(self, *arg):
         """
@@ -753,7 +753,6 @@ class PEDA(object):
         if len(arg) == 1 and to_int(arg[0]) != None:
             arg += [to_hex(to_int(arg[0]) + 32)]
 
-        self.execute("set disassembly-flavor intel")
         out = self.execute_redirect("disassemble %s %s" % (modif, ",".join(arg)))
         if not out:
             return None
@@ -900,7 +899,8 @@ class PEDA(object):
         if search == "":
             search_data = 0
 
-        out = execute_external_command("%s -M intel -z --prefix-address -d '%s' | grep '%s'" % (config.OBJDUMP, filename, search))
+        out = execute_external_command("%s -M %s -z --prefix-address -d '%s' | grep '%s'" %
+            (config.OBJDUMP, gdb.parameter('disassembly-flavor'), filename, search))
 
         for line in out.splitlines():
             if not line: continue
@@ -5570,10 +5570,10 @@ class PEDACmd(object):
 
     def assemble(self, *arg):
         """
-        On the fly assemble and execute instructions using NASM
+        On the fly assemble and execute instructions
         Usage:
             MYNAME [mode] [address]
-                mode: -b16 / -b32 / -b64
+                mode: -b32 / -b64
         """
         (mode, address) = normalize_argv(arg, 2)
 
@@ -5587,7 +5587,7 @@ class PEDACmd(object):
             mode = bits
         else:
             mode = to_int(mode[2:])
-            if mode not in [16, 32, 64]:
+            if mode not in [32, 64]:
                 self._missing_argument()
 
         if self._is_running() and address == peda.getreg("pc"):
@@ -5605,7 +5605,7 @@ class PEDACmd(object):
         else:
             msg("Instructions will be written to stdout")
 
-        msg("Type instructions (NASM syntax), one or more per line separated by \";\"")
+        msg("Type instructions, one or more per line separated by \";\"")
         msg("End with a line saying just \"end\"")
 
         if not write_mode:
@@ -5635,7 +5635,7 @@ class PEDACmd(object):
             inst_code += bincode
             msg("hexify: \"%s\"" % to_hexstr(bincode))
 
-        text = Nasm.format_shellcode(b"".join([x[1] for x in inst_list]), mode)
+        text = Asm.format_shellcode(b"".join([x[1] for x in inst_list]), mode)
         if text:
             msg("Assembled%s instructions:" % ("/Executed" if exec_mode else ""))
             msg(text)
@@ -6155,7 +6155,6 @@ peda.execute("set prompt \001%s\002" % red("\002gdb-peda$ \001")) # custom promp
 peda.execute("set height 0") # disable paging
 peda.execute("set history expansion on")
 peda.execute("set history save on") # enable history saving
-peda.execute("set disassembly-flavor intel")
 peda.execute("set follow-fork-mode child")
 peda.execute("set backtrace past-main on")
 peda.execute("set step-mode on")
