@@ -6148,16 +6148,19 @@ Alias("reg", "peda xinfo register")
 Alias("brva", "breakrva")
 
 # misc gdb settings
-peda.execute("set confirm off")
 peda.execute("set verbose off")
 peda.execute("set output-radix 0x10")
 peda.execute("set prompt \001%s\002" % red("\002gdb-peda$ \001")) # custom prompt
+peda.execute("set pagination off") # disable paging
 peda.execute("set height 0") # disable paging
 peda.execute("set history expansion on")
-peda.execute("set history save on") # enable history saving
 peda.execute("set follow-fork-mode child")
 peda.execute("set backtrace past-main on")
 peda.execute("set step-mode on")
+peda.execute("set print elements unlimited")
 peda.execute("set print pretty on")
+peda.execute("set print demangle off")
+peda.execute("set print asm-demangle off")
+peda.execute("set demangle-style none")
 peda.execute("handle SIGALRM print nopass") # ignore SIGALRM
 peda.execute("handle SIGSEGV stop print nopass") # catch SIGSEGV
